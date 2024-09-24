@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grade Calculator</title>
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: sans-serif;
+            background-color: #116dca;
+        }
+        .container {
+            max-width: 400px;
+            width: 100%;
+            background-color: #fff;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .container h1 {
+            text-align: center;
+        }
+        form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            column-gap: 10px;
+            row-gap: 15px;
+        }
+        form label {
+            grid-column: span 2;
+            margin-bottom: -10px;
+        }
+        form input {
+            grid-column: span 2;
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 0;
+            box-sizing: border-box;
+        }
+        .btn-primary {
+            grid-column: span 2;
+            width: 100%;
+            padding: 10px;
+            background-color: #116dca;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .btn-primary:hover {
+            background-color: #0e5ba7;
+        }
+        .alert {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><span style="color: red;">Grade Calculator</span></h1>
+        <form>
+            <label for="absences">Number of Absences:</label>
+            <input type="number" id="absences" class="form-control" placeholder="Enter absences">
+
+            <label for="prelim">Prelim Exam Grade:</label>
+            <input type="number" id="prelim" class="form-control" placeholder="Enter prelim grade">
+
+            <label for="quizzes">Quizzes Grade:</label>
+            <input type="number" id="quizzes" class="form-control" placeholder="Enter quizzes grade">
+
+            <label for="requirements">Requirements Grade:</label>
+            <input type="number" id="requirements" class="form-control" placeholder="Enter requirements grade">
+
+            <label for="recitation">Recitation Grade:</label>
+            <input type="number" id="recitation" class="form-control" placeholder="Enter recitation grade">
+
+            <button type="button" id="calculate" class="btn-primary">Calculate</button>
+        </form>
+
+        <div id="error-message" class="alert alert-danger" style="display: none;"></div>
+        <div id="result-message" class="alert alert-success" style="display: none;"></div>
+
+        <py-script>
+            from pyscript import Element
+
+            def calculate_grades(event):
+                error_message = Element("error-message")
+                result_message = Element("result-message")
+                error_message.element.innerHTML = ""
+                result_message.element.innerHTML = ""
+                error_message.element.style.display = "none"
+                result_message.element.style.display = "none"
+
+                try:
+                    # Gather inputs
+                    absences = int(Element("absences").element.value)
+                    prelim_grade = float(Element("prelim").element.value)
+                    quizzes_grade = float(Element("quizzes").element.value)
+                    requirements_grade = float(Element("requirements").element.value)
+                    recitation_grade = float(Element("recitation").element.value)
+
+                    # Validate inputs
+                    if absences < 0:
+                        raise ValueError("Absences cannot be negative.")
+                    if not all(0 <= grade <= 100 for grade in [prelim_grade, quizzes_grade, requirements_grade, recitation_grade]):
+                        raise ValueError("Grades must be between 0 and 100.")
+
+                    # Attendance calculation
+                    attendance = 100 - (absences * 10)
+                    if absences >= 4:
+                        result_message.element.innerHTML = "FAILED due to excessive absences."
+                        result_message.element.className = "alert alert-danger"
+                        result_message.element.style.display = "block"
+                        return
+
+                    # Class standing calculation: 40% Quizzes, 30% Requirements, 30% Recitation
+                    class_standing = (0.40 * quizzes_grade) + (0.30 * requirements_grade) + (0.30 * recitation_grade)
+
+                    # Prelim grade calculation: 60% Prelim Exam, 10% Attendance, 30% Class Standing
+                    prelim_total_grade = (0.60 * prelim_grade) + (0.10 * attendance) + (0.30 * class_standing)
+
+                    # Target Midterm and Final grades for passing (75%) and Dean’s List (90%)
+                    passing_grade = 75
+                    deans_grade = 90
+
+                    midterm_weight = 0.30
+                    final_weight = 0.50
+
+                    prelim_weighted = 0.20 * prelim_total_grade
+
+                    # Required total from Midterm and Final
+                    required_total_pass = passing_grade - prelim_weighted
+                    required_total_dean = deans_grade - prelim_weighted
+
+                    # Check if it's possible to achieve passing or dean's list
+                    max_possible = midterm_weight * 100 + final_weight * 100
+                    if required_total_pass > max_possible:
+                        pass_message = "It's impossible to pass with the current Prelim grade."
+                    else:
+                        # Assuming equal Midterm and Final grades needed
+                        required_midterm_final_pass = required_total_pass / (midterm_weight + final_weight)
+                        pass_message = f"To pass with 75%, you need a Midterm grade of {required_midterm_final_pass:.2f} and a Final grade of {required_midterm_final_pass:.2f}."
+
+                    if required_total_dean > max_possible:
+                        dean_message = "It's impossible to achieve Dean's List with the current Prelim grade."
+                    else:
+                        required_midterm_final_dean = required_total_dean / (midterm_weight + final_weight)
+                        dean_message = f"To achieve Dean's List (90%), you need a Midterm grade of {required_midterm_final_dean:.2f} and a Final grade of {required_midterm_final_dean:.2f}."
+
+                    result_message.element.innerHTML = (
+                        f'Prelim Grade: {prelim_total_grade:.2f}<br><br>'
+                        f'{pass_message}<br>'
+                        f'{dean_message}'
+                    )
+                    result_message.element.className = "alert alert-success"
+                    result_message.element.style.display = "block"
+
+                except ValueError as ve:
+                    error_message.element.innerHTML = str(ve)
+                    error_message.element.className = "alert alert-danger"
+                    error_message.element.style.display = "block"
+                except Exception as e:
+                    error_message.element.innerHTML = "An unexpected error occurred."
+                    error_message.element.className = "alert alert-danger"
+                    error_message.element.style.display = "block"
+
+            Element("calculate").element.onclick = calculate_grades
+        </py-script>
+    </div>
+</body>
+</html>
+
+
+
+
+
